@@ -13,8 +13,8 @@ public:
 
   // Open Q: Why is noexcept needed?
   // TODO: Implement these
-  UniquePtr(UniquePtr &&) noexcept = default;
-  UniquePtr &operator=(UniquePtr &&) noexcept = default;
+  // UniquePtr(UniquePtr &&) noexcept;
+  // UniquePtr &operator=(UniquePtr &&) noexcept;
 
   // Explicitly deleting these even though the compiler does that when you
   // define any of the move functions. We can't copy a unique ptr because its
@@ -22,12 +22,14 @@ public:
   UniquePtr(const UniquePtr &) = delete;
   UniquePtr &operator=(const UniquePtr &) = delete;
 
-  operator bool() { return ptr == nullptr; }
-  T *operator*() { return ptr; }
+  explicit operator bool() { return ptr != nullptr; }
+  T &operator*() { return *ptr; }
+  T *operator->() { return ptr; } // Compiler applies -> recursively?
 
 private:
   T *ptr{nullptr};
 
   // Open Q: How does std::make_unique interface with this class?
+  // Open Q: Contextual Conversion and safe bool idiom pre C++11.
 };
 } // namespace jstl
