@@ -33,4 +33,18 @@ int main(int, char **) {
   assert(!movedFromPtr);
   assert(!movedToPtr);
   assert(assignedPtr);
+
+  // Test for memory leaks
+  jstl::UniquePtr<Person> assignedWithValue(
+      std::string{"Albert Einstein"}, 147u,
+      std::vector<std::string>{"Lieserl", "Hans Albert", "Edmund"});
+  assert(assignedWithValue);
+  // asan will catch any memory leaks here
+  assignedWithValue = std::move(assignedPtr);
+  assert(assignedPtr); // This still evaluates to true now because of our swap.
+                       // Maybe that is a bug?
+  assert(assignedWithValue);
+  // Self Move
+  assignedWithValue = std::move(assignedWithValue);
+  assert(assignedWithValue);
 }

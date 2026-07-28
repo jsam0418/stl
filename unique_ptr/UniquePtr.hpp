@@ -1,3 +1,4 @@
+#include <utility>
 namespace jstl {
 template <typename T> class UniquePtr {
 public:
@@ -21,8 +22,22 @@ public:
     movedFromPtr.ptr = nullptr;
   };
   UniquePtr &operator=(UniquePtr &&movedFromPtr) noexcept {
-    ptr = movedFromPtr.ptr;
-    movedFromPtr.ptr = nullptr;
+    /*
+if (ptr) {
+  delete ptr;
+}
+ptr = movedFromPtr.ptr;
+movedFromPtr.ptr = nullptr;
+return *this;
+    */
+
+    // In order to solve the self assignment issue, we could do a few things.
+    // 1. We could put the ptr in a temporary variable, clear the outside
+    // object, then put our ptr back
+    // 2. We could swap ptr values. If objects are the same, no-op. If objects
+    // are different, the moved
+    //    from object now cleans up our resource when it expires.
+    std::swap(movedFromPtr.ptr, ptr);
     return *this;
   };
 
