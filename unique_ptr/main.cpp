@@ -41,8 +41,7 @@ int main(int, char **) {
   assert(assignedWithValue);
   // asan will catch any memory leaks here
   assignedWithValue = std::move(assignedPtr);
-  assert(assignedPtr); // This still evaluates to true now because of our swap.
-                       // Maybe that is a bug?
+  assert(!assignedPtr);
   assert(assignedWithValue);
   // Self Move
   assignedWithValue = std::move(assignedWithValue);

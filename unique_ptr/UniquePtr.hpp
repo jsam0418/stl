@@ -7,9 +7,7 @@ public:
   UniquePtr() = default;
   ~UniquePtr() {
     // RAII - When this goes out of scope, clean up the ptr
-    if (ptr) {
-      delete ptr;
-    }
+    delete ptr;
   }
 
   // Open Q: Why is noexcept needed?
@@ -37,7 +35,11 @@ return *this;
     // 2. We could swap ptr values. If objects are the same, no-op. If objects
     // are different, the moved
     //    from object now cleans up our resource when it expires.
-    std::swap(movedFromPtr.ptr, ptr);
+
+    /*
+        std::swap(movedFromPtr.ptr, ptr);
+      */
+    reset(movedFromPtr.release());
     return *this;
   };
 
@@ -50,6 +52,17 @@ return *this;
   explicit operator bool() { return ptr != nullptr; }
   T &operator*() { return *ptr; }
   T *operator->() { return ptr; } // Open Q: Compiler applies -> recursively?
+
+  T *release() {
+    T *ret = ptr;
+    ptr = nullptr;
+    return ret;
+  }
+
+  void reset(T *newPtr) {
+    delete ptr;
+    ptr = newPtr;
+  }
 
 private:
   T *ptr{nullptr};
