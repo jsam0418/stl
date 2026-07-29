@@ -17,9 +17,6 @@ int main(int, char**) {
 
   struct CustomDeleter {
     void operator()(Person* person) {
-      if (!person) {
-        return;
-      }
       std::println("Removing person: {}", person->name);
       delete person;
     }

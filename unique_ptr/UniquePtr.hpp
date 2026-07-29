@@ -12,7 +12,9 @@ class UniquePtr {
   UniquePtr() = default;
   ~UniquePtr() {
     // RAII - When this goes out of scope, clean up the ptr
-    deleter(ptr);
+    if (ptr) {
+      deleter(ptr);
+    }
   }
 
   // Open Q: Why is noexcept needed?
@@ -23,6 +25,7 @@ class UniquePtr {
   UniquePtr(UniquePtr&& movedFromPtr) noexcept {
     ptr = movedFromPtr.ptr;
     movedFromPtr.ptr = nullptr;
+    deleter = movedFromPtr.deleter;
   }
   UniquePtr& operator=(UniquePtr&& movedFromPtr) noexcept {
     /*
@@ -45,6 +48,7 @@ return *this;
         std::swap(movedFromPtr.ptr, ptr);
       */
     reset(movedFromPtr.release());
+    deleter = movedFromPtr.deleter;
     return *this;
   }
 
@@ -57,8 +61,8 @@ return *this;
   [[nodiscard]] explicit operator bool() const noexcept {
     return ptr != nullptr;
   }
-  [[nodiscard]] T& operator*() const { return *ptr; }
-  [[nodiscard]] T* operator->() const {
+  [[nodiscard]] T& operator*() const noexcept { return *ptr; }
+  [[nodiscard]] T* operator->() const noexcept {
     return ptr;
   }  // Open Q: Compiler applies -> recursively?
 
@@ -71,10 +75,12 @@ return *this;
   void reset(T* newPtr = nullptr) noexcept {
     T* toDelete = ptr;
     ptr = newPtr;
-    deleter(toDelete);
+    if (toDelete) {
+      deleter(toDelete);
+    }
   }
 
-  [[nodiscard]] T* get() const { return ptr; }
+  [[nodiscard]] T* get() const noexcept { return ptr; }
 
  private:
   T* ptr{nullptr};
@@ -86,7 +92,7 @@ return *this;
 
 template <typename T, typename Deleter = std::default_delete<T>,
           typename... Args>
-auto MakeUnique(Args... args) {
-  return jstl::UniquePtr<T, Deleter>(new T(args...));
+auto MakeUnique(Args&&... args) {
+  return jstl::UniquePtr<T, Deleter>(new T(std::forward<Args&&>(args)...));
 }
 }  // namespace jstl
