@@ -1,0 +1,11 @@
+# No compile_commands.json for this repo (builds are plain build.sh g++/clang++
+# invocations), so clangd uses its generic fallback command. Without these it
+# defaults to -std=gnu++17 and floods every file with errors on
+# concepts/requires/[[no_unique_address]].
+#
+# NOTE: each list entry becomes ONE argv token. "-I <path>" with a space would
+# be passed as a single quoted argument and silently fail to resolve, so the
+# include path must be joined to -I (or split into two entries).
+# Keep in sync with unique_ptr/build.sh and unique_ptr/build_tests.sh.
+CompileFlags:
+  Add: [-std=c++23, -Wall, -Wextra, -I/home/josiah/stl/unique_ptr]

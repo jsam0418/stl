@@ -1,13 +1,18 @@
-#include <utility>
-namespace jstl {
-template <typename T> class UniquePtr {
-public:
-  template <typename... Args> UniquePtr(Args... args) { ptr = new T(args...); }
+#pragma once
 
+#include <concepts>
+#include <memory>
+
+namespace jstl {
+template <typename T, typename Deleter = std::default_delete<T>>
+  requires std::invocable<Deleter, T*>
+class UniquePtr {
+ public:
+  explicit UniquePtr(T* _ptr) : ptr{_ptr} {}
   UniquePtr() = default;
   ~UniquePtr() {
     // RAII - When this goes out of scope, clean up the ptr
-    delete ptr;
+    deleter(ptr);
   }
 
   // Open Q: Why is noexcept needed?
@@ -15,11 +20,11 @@ public:
   // mid-move, we have no idea what state both the moved from and the moved to
   // objects are in. This would probably result in a memory leak since the
   // resource can't be cleaned up.
-  UniquePtr(UniquePtr &&movedFromPtr) noexcept {
+  UniquePtr(UniquePtr&& movedFromPtr) noexcept {
     ptr = movedFromPtr.ptr;
     movedFromPtr.ptr = nullptr;
-  };
-  UniquePtr &operator=(UniquePtr &&movedFromPtr) noexcept {
+  }
+  UniquePtr& operator=(UniquePtr&& movedFromPtr) noexcept {
     /*
 if (ptr) {
   delete ptr;
@@ -41,33 +46,47 @@ return *this;
       */
     reset(movedFromPtr.release());
     return *this;
-  };
+  }
 
   // Explicitly deleting these even though the compiler does that when you
   // define any of the move functions. We can't copy a unique ptr because its
   // the singular owner of the resource.
-  UniquePtr(const UniquePtr &) = delete;
-  UniquePtr &operator=(const UniquePtr &) = delete;
+  UniquePtr(const UniquePtr&) = delete;
+  UniquePtr& operator=(const UniquePtr&) = delete;
 
-  explicit operator bool() { return ptr != nullptr; }
-  T &operator*() { return *ptr; }
-  T *operator->() { return ptr; } // Open Q: Compiler applies -> recursively?
+  [[nodiscard]] explicit operator bool() const noexcept {
+    return ptr != nullptr;
+  }
+  [[nodiscard]] T& operator*() const { return *ptr; }
+  [[nodiscard]] T* operator->() const {
+    return ptr;
+  }  // Open Q: Compiler applies -> recursively?
 
-  T *release() {
-    T *ret = ptr;
+  [[nodiscard]] T* release() noexcept {
+    T* ret = ptr;
     ptr = nullptr;
     return ret;
   }
 
-  void reset(T *newPtr) {
-    delete ptr;
+  void reset(T* newPtr = nullptr) noexcept {
+    T* toDelete = ptr;
     ptr = newPtr;
+    deleter(toDelete);
   }
 
-private:
-  T *ptr{nullptr};
+  [[nodiscard]] T* get() const { return ptr; }
+
+ private:
+  T* ptr{nullptr};
+  [[no_unique_address]] Deleter deleter;
 
   // Open Q: How does std::make_unique interface with this class?
   // Open Q: Contextual Conversion and safe bool idiom pre C++11.
 };
-} // namespace jstl
+
+template <typename T, typename Deleter = std::default_delete<T>,
+          typename... Args>
+auto MakeUnique(Args... args) {
+  return jstl::UniquePtr<T, Deleter>(new T(args...));
+}
+}  // namespace jstl
