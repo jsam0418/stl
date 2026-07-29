@@ -57,5 +57,6 @@ int main(int, char**) {
   assignedWithValue = std::move(assignedWithValue);
   assert(assignedWithValue);
   assert(sizeof(assignedWithValue) ==
-         sizeof(Person*));  // Empty Base Class Optimization
+         sizeof(Person*));  // Not Empty Base Class Optimization, but similar
+                            // mechanism
 }

@@ -25,7 +25,7 @@ class UniquePtr {
   UniquePtr(UniquePtr&& movedFromPtr) noexcept {
     ptr = movedFromPtr.ptr;
     movedFromPtr.ptr = nullptr;
-    deleter = movedFromPtr.deleter;
+    deleter = std::move(movedFromPtr.deleter);
   }
   UniquePtr& operator=(UniquePtr&& movedFromPtr) noexcept {
     /*
@@ -48,7 +48,7 @@ return *this;
         std::swap(movedFromPtr.ptr, ptr);
       */
     reset(movedFromPtr.release());
-    deleter = movedFromPtr.deleter;
+    deleter = std::move(movedFromPtr.deleter);
     return *this;
   }
 
@@ -90,9 +90,18 @@ return *this;
   // Open Q: Contextual Conversion and safe bool idiom pre C++11.
 };
 
+// Deviation: The standard does not allow make_unique to take a custom deleter.
+// You must operate on the unique_ptr directly. Make unique's main purpose is to
+// remove the "every call to new must have a delete" breakage that unique_ptr
+// would otherwise add. However, a custom deleter is most likely going to be
+// used by different resource types, like a file or socket. The same new/delete
+// paradigm doesn't exists there.
+// TODO: Figure out how to pass a stateful Deleter to our unique ptr.
 template <typename T, typename Deleter = std::default_delete<T>,
           typename... Args>
 auto MakeUnique(Args&&... args) {
-  return jstl::UniquePtr<T, Deleter>(new T(std::forward<Args&&>(args)...));
+  // Open Q: Why does std::forward<Args&&> and std::forward<Args> produce the
+  // same results? Hint: reference collapsing.
+  return jstl::UniquePtr<T, Deleter>(new T(std::forward<Args>(args)...));
 }
 }  // namespace jstl
