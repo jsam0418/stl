@@ -8,7 +8,8 @@ template <typename T, typename Deleter = std::default_delete<T>>
   requires std::invocable<Deleter, T*>
 class UniquePtr {
  public:
-  explicit UniquePtr(T* _ptr) : ptr{_ptr} {}
+  explicit UniquePtr(T* _ptr, Deleter&& _deleter = Deleter{})
+      : ptr{_ptr}, deleter{std::forward<Deleter>(_deleter)} {}
   UniquePtr() = default;
   ~UniquePtr() {
     // RAII - When this goes out of scope, clean up the ptr
@@ -81,6 +82,7 @@ return *this;
   }
 
   [[nodiscard]] T* get() const noexcept { return ptr; }
+  [[nodiscard]] const Deleter& getDeleter() const noexcept { return deleter; }
 
  private:
   T* ptr{nullptr};

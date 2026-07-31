@@ -59,4 +59,50 @@ int main(int, char**) {
   assert(sizeof(assignedWithValue) ==
          sizeof(Person*));  // Not Empty Base Class Optimization, but similar
                             // mechanism
+
+  // Custom Deleter with state
+  struct CustomDeleterWithState : public CustomDeleter {
+    CustomDeleterWithState() = default;
+    CustomDeleterWithState(CustomDeleterWithState&& movedFrom) noexcept {
+      uuid = movedFrom.uuid;
+      movedFrom.uuid = 0;
+    }
+    ~CustomDeleterWithState() {
+      std::println("Cleaning Up Custom Deleter uuid {}", uuid);
+    }
+    CustomDeleterWithState(const CustomDeleterWithState& copiedFrom) {
+      uuid = copiedFrom.uuid;
+    }
+    CustomDeleterWithState& operator=(
+        const CustomDeleterWithState& copiedFrom) {
+      uuid = copiedFrom.uuid;
+      return *this;
+    }
+    CustomDeleterWithState& operator=(
+        CustomDeleterWithState&& movedFrom) noexcept {
+      auto tempUuid = movedFrom.uuid;
+      movedFrom.uuid = 0;
+      uuid = tempUuid;
+      return *this;
+    }
+
+    size_t uuid{0};
+  } deleterWState;
+
+  deleterWState.uuid = 2;
+  using UniquePtrWDeleterState =
+      jstl::UniquePtr<Person, CustomDeleterWithState>;
+  Person* tesla =
+      new Person(std::string{"Nikola Tesla"}, 170u, std::vector<std::string>{});
+  UniquePtrWDeleterState statePtr{tesla, std::move(deleterWState)};
+  assert(deleterWState.uuid == 0);
+  assert(sizeof(statePtr) == (sizeof(Person*) + sizeof(size_t)));
+  assert(statePtr);
+  assert(statePtr.getDeleter().uuid == 2);
+
+  UniquePtrWDeleterState movedToStatePtr(std::move(statePtr));
+  assert(!statePtr);
+  assert(movedToStatePtr);
+  assert(statePtr.getDeleter().uuid == 0);
+  assert(movedToStatePtr.getDeleter().uuid == 2);
 }
